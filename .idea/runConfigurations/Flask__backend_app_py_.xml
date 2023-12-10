@@ -1,0 +1,19 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Flask (backend/app.py)" type="Python.FlaskServer" nameIsGenerated="true">
+    <option name="flaskDebug" value="true" />
+    <module name="BUAA_Forum_Backend" />
+    <option name="target" value="D:\文木\桌面\ddl\数据库\大作业（北航树洞）\BUAA_Forum_Backend\backend\app.py" />
+    <option name="targetType" value="PATH" />
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="PARENT_ENVS" value="true" />
+    <option name="SDK_HOME" value="D:\文木\桌面\ddl\数据库\大作业（北航树洞）\BUAA_Forum_Backend\venv\Scripts\python.exe" />
+    <option name="SDK_NAME" value="Python 3.10 (BUAA_Forum_Backend)" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <option name="IS_MODULE_SDK" value="false" />
+    <option name="ADD_CONTENT_ROOTS" value="true" />
+    <option name="ADD_SOURCE_ROOTS" value="true" />
+    <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+    <option name="launchJavascriptDebuger" value="false" />
+    <method v="2" />
+  </configuration>
+</component>
