@@ -3,6 +3,7 @@ from flask_cors import CORS
 import pymysql
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime  # 导入datetime模块
 
 pymysql.install_as_MySQLdb()
 app = Flask(__name__)
@@ -63,8 +64,8 @@ def login():
             return jsonify({'message': '用户名或密码错误', 'code': 509})
 
         # You can generate a token here if you want to implement token-based authentication
-        print(data)
-        return jsonify({'message': '登录成功', 'code': 1000})
+        user_id = user.user_id
+        return jsonify({'message': '登录成功', 'code': 1000, 'user_id': user_id, 'user_name': user_name})
     except Exception as e:
         return jsonify({'message': str(e), 'code': 500})
 
@@ -96,23 +97,36 @@ def logout(user_name):
     return jsonify({'message': 'User logged out successfully!'}), 200
 
 
+# 发帖
 @app.route('/create_post', methods=['POST'])
 def create_post():
     try:
+        data = request.get_json()
         # 从请求中获取数据
-        user_id = request.json.get('user_id')
-        content = request.json.get('content')
+        user_id = data['user_id']
+        content = data['content']
+        tag_name = data['tag_name']
+        title = data['title']
+        # 获取当前时间
+        current_time = datetime.utcnow()
+
         # 创建新的帖子并添加到数据库
         user = User.query.get(user_id)
         if user:
-            new_post = Post(content=content, u_id=user_id)
+            new_post = Post(content=content, u_id=user_id, title=title, post_time=current_time)
             db.session.add(new_post)
+            tag = Tag.query.filter_by(tag_name=tag_name).first()
+            if tag:
+                new_post_tag = PostTag(post_id=new_post.post_id, tag_id=tag.tag_id)
+                db.session.add(new_post_tag)
+            else:
+                return jsonify({'error': '标签不存在', 'code': 409})
             db.session.commit()
-            return jsonify({'message': 'Post created successfully!'}), 201
+            return jsonify({'message': '发帖成功', 'code': 1000})
         else:
-            return jsonify({'error': 'User not found!'}), 404
+            return jsonify({'error': '用户不存在或未登录', 'code': 409})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e), 'code': 500})
 
 
 @app.route('/show_posts', methods=['GET'])
@@ -124,7 +138,9 @@ def get_posts():
         post_info = {
             'post_id': post.post_id,
             'content': post.content,
-            'user_id': post.user_id
+            'user_id': post.user_id,
+            'post_time': post.post_time,
+            'title': post.title
             # Add more fields as needed
         }
         post_list.append(post_info)
@@ -165,18 +181,20 @@ def post_comment():
         user = User.query.get(from_user_id)
         to_post_id = data['to_post_id']
         post = Post.query.get(to_post_id)
+        comment_time = data['comment_time']
 
         if user and post:
             # Insert new comment into the 'comments' table
-            new_comment = Comment(content=content, from_user_id=from_user_id, to_post_id=to_post_id)
+            new_comment = Comment(content=content, from_user_id=from_user_id, to_post_id=to_post_id,
+                                  comment_time=comment_time)
             db.session.add(new_comment)
             db.session.commit()
 
-            return jsonify({'message': 'Comment posted successfully'}), 201
+            return jsonify({'message': '评论发布成功', 'code': 1000})
         else:
-            return jsonify({'message': '用户或帖子不存在'}), 404
+            return jsonify({'message': '用户或帖子不存在', 'code': 409})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e), 'code': 309})
 
 
 # API endpoint for deleting a comment
@@ -200,6 +218,42 @@ def delete_comment(comment_id):
             return jsonify({'error': 'You are not authorized to delete this post'}), 403
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/comments', methods=['POST'])
+def get_comments_for_post():
+    try:
+        data = request.json
+
+        post_id = data.get('post_id')
+
+        if post_id is None:
+            return jsonify({'error': 'Missing post_id parameter', 'code': 400})
+
+        post = Post.query.get(post_id)
+
+        if not post:
+            return jsonify({'error': 'Post not found', 'code': 404})
+
+        comments = Comment.query.filter_by(to_id=post_id).all()
+
+        comments_data = []
+        for comment in comments:
+            comment_data = {
+                'comment_id': comment.comment_id,
+                'content': comment.content,
+                'from_user': {
+                    'user_id': comment.user.user_id,
+                    'username': comment.user.username
+                },
+                'comment_time': comment.comment_time
+            }
+            comments_data.append(comment_data)
+
+        return jsonify({'comments': comments_data, 'code': 1000})
+
+    except Exception as e:
+        return jsonify({'error': str(e), 'code': 500})
 
 
 if __name__ == '__main__':

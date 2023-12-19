@@ -1,72 +1,169 @@
-
-
-CREATE TABLE users
+create table communities
 (
-    user_id   INT PRIMARY KEY AUTO_INCREMENT,
-    user_name VARCHAR(20) NOT NULL UNIQUE,
-    user_key  TEXT NOT NULL
+    community_id   int auto_increment
+        primary key,
+    community_name varchar(50) not null,
+    description    text        null,
+    constraint community_name
+        unique (community_name)
 );
 
-CREATE TABLE posts
+create table tags
 (
-    post_id INT PRIMARY KEY AUTO_INCREMENT,
-    content VARCHAR(1000) NOT NULL,
-    u_id INT NOT NULL,
-    FOREIGN KEY (u_id) REFERENCES users(user_id) ON DELETE CASCADE
+    tag_id   int auto_increment
+        primary key,
+    tag_name varchar(50) not null
 );
 
-CREATE TABLE comments
+create table users
 (
-    comment_id INT PRIMARY KEY AUTO_INCREMENT,
-    content VARCHAR(1000) NOT NULL,
-    from_id INT NOT NULL,
-    to_id INT NOT NULL,
-    FOREIGN KEY (from_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (to_id) REFERENCES posts(post_id) ON DELETE CASCADE
+    user_id   int auto_increment
+        primary key,
+    user_name varchar(20) not null,
+    user_key  text        not null,
+    gender    varchar(20) not null,
+    academy   text        null,
+    email     text        null,
+    constraint user_name
+        unique (user_name)
 );
 
-CREATE TABLE post_likes
+create table community_users
 (
-    like_id INT PRIMARY KEY AUTO_INCREMENT,
-    post_id INT NOT NULL,
-    user_id INT NOT NULL,
-    FOREIGN KEY (post_id) REFERENCES posts(post_id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    community_user_id int auto_increment
+        primary key,
+    user_id           int not null,
+    community_id      int not null,
+    constraint community_users_ibfk_1
+        foreign key (user_id) references users (user_id)
+            on delete cascade,
+    constraint community_users_ibfk_2
+        foreign key (community_id) references communities (community_id)
+            on delete cascade
 );
 
-CREATE TABLE friendships
+create index community_id
+    on community_users (community_id);
+
+create index user_id
+    on community_users (user_id);
+
+create table friendships
 (
-    friendship_id INT PRIMARY KEY AUTO_INCREMENT,
-    user1_id INT NOT NULL,
-    user2_id INT NOT NULL,
-    FOREIGN KEY (user1_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (user2_id) REFERENCES users(user_id) ON DELETE CASCADE
+    friendship_id int auto_increment
+        primary key,
+    user1_id      int not null,
+    user2_id      int not null,
+    constraint friendships_ibfk_1
+        foreign key (user1_id) references users (user_id)
+            on delete cascade,
+    constraint friendships_ibfk_2
+        foreign key (user2_id) references users (user_id)
+            on delete cascade
 );
 
-CREATE TABLE private_messages
+create index user1_id
+    on friendships (user1_id);
+
+create index user2_id
+    on friendships (user2_id);
+
+create table posts
 (
-    message_id INT PRIMARY KEY AUTO_INCREMENT,
-    content VARCHAR(1000) NOT NULL,
-    from_user_id INT NOT NULL,
-    to_user_id INT NOT NULL,
-    FOREIGN KEY (from_user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (to_user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    post_id   int auto_increment
+        primary key,
+    content   varchar(1000) not null,
+    u_id      int           not null,
+    post_time datetime      null,
+    title     varchar(255)  not null,
+    constraint posts_ibfk_1
+        foreign key (u_id) references users (user_id)
+            on delete cascade
 );
 
-CREATE TABLE communities
+create table comments
 (
-    community_id INT PRIMARY KEY AUTO_INCREMENT,
-    community_name VARCHAR(50) NOT NULL UNIQUE,
-    description TEXT
+    comment_id   int auto_increment
+        primary key,
+    content      varchar(1000) not null,
+    from_id      int           not null,
+    to_id        int           not null,
+    comment_time datetime      null,
+    constraint comments_ibfk_1
+        foreign key (from_id) references users (user_id)
+            on delete cascade,
+    constraint comments_ibfk_2
+        foreign key (to_id) references posts (post_id)
+            on delete cascade
 );
 
-CREATE TABLE community_users
+create index from_id
+    on comments (from_id);
+
+create index to_id
+    on comments (to_id);
+
+create table post_likes
 (
-    community_user_id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT NOT NULL,
-    community_id INT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (community_id) REFERENCES communities(community_id) ON DELETE CASCADE
+    like_id int auto_increment
+        primary key,
+    post_id int not null,
+    user_id int not null,
+    constraint post_likes_ibfk_1
+        foreign key (post_id) references posts (post_id)
+            on delete cascade,
+    constraint post_likes_ibfk_2
+        foreign key (user_id) references users (user_id)
+            on delete cascade
 );
 
+create index post_id
+    on post_likes (post_id);
+
+create index user_id
+    on post_likes (user_id);
+
+create table post_tags
+(
+    post_tag_id int auto_increment
+        primary key,
+    post_id     int null,
+    tag_id      int null,
+    constraint post_tags_ibfk_1
+        foreign key (post_id) references posts (post_id)
+            on delete cascade,
+    constraint post_tags_ibfk_2
+        foreign key (tag_id) references tags (tag_id)
+            on delete cascade
+);
+
+create index post_id
+    on post_tags (post_id);
+
+create index tag_id
+    on post_tags (tag_id);
+
+create index u_id
+    on posts (u_id);
+
+create table private_messages
+(
+    message_id   int auto_increment
+        primary key,
+    content      varchar(1000) not null,
+    from_user_id int           not null,
+    to_user_id   int           not null,
+    constraint private_messages_ibfk_1
+        foreign key (from_user_id) references users (user_id)
+            on delete cascade,
+    constraint private_messages_ibfk_2
+        foreign key (to_user_id) references users (user_id)
+            on delete cascade
+);
+
+create index from_user_id
+    on private_messages (from_user_id);
+
+create index to_user_id
+    on private_messages (to_user_id);
 

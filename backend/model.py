@@ -11,9 +11,10 @@ class User(db.Model):
     user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_name = db.Column(db.String(20), nullable=False, unique=True)
     user_key = db.Column(db.Text, nullable=False)
-    gender = db.Column(db.Integer, nullable=False)
+    gender = db.Column(db.String(20), nullable=False)
     academy = db.Column(db.Text, nullable=True)
     email = db.Column(db.Text, nullable=True)
+
 
 # 定义帖子表模型
 class Post(db.Model):
@@ -22,6 +23,8 @@ class Post(db.Model):
     content = db.Column(db.String(1000), nullable=False)
     u_id = db.Column(db.Integer, db.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
     user = db.relationship('User', backref=db.backref('posts', cascade='all, delete-orphan'))
+    post_time = db.Column(db.DateTime, nullable=True)
+    title = db.Column(db.String(255), nullable=False)
 
 
 # 定义评论表模型
@@ -33,3 +36,22 @@ class Comment(db.Model):
     to_id = db.Column(db.Integer, db.ForeignKey('posts.post_id', ondelete='CASCADE'), nullable=False)
     user = db.relationship('User', backref=db.backref('comments', cascade='all, delete-orphan'))
     post = db.relationship('Post', backref=db.backref('comments', cascade='all, delete-orphan'))
+    comment_time = db.Column(db.DateTime, nullable=True)
+
+
+class Tag(db.Model):
+    __tablename__ = 'tags'
+    tag_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    tag_name = db.Column(db.String(50), nullable=False, unique=True)
+
+
+class PostTag(db.Model):
+    __tablename__ = 'post_tags'
+    post_tag_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.post_id', ondelete='CASCADE'), nullable=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey('tags.tag_id', ondelete='CASCADE'), nullable=True)
+
+    post = db.relationship('Post', backref=db.backref('post_tags', cascade='all, delete-orphan'))
+    tag = db.relationship('Tag', backref=db.backref('post_tags', cascade='all, delete-orphan'))
+
+
