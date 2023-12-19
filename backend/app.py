@@ -51,21 +51,22 @@ def login():
     try:
         data = request.get_json()
 
-        user_name = data.get('user_name')
-        user_key = data.get('user_key')
+        user_name = data.get('username')
+        user_key = data.get('password')
+
         if not user_name or not user_key:
-            return jsonify({'message': 'Missing username or password'}), 400
+            return jsonify({'message': '用户名或密码为空', 'code': 409})
 
         user = User.query.filter_by(user_name=user_name).first()
 
         if not user or not check_password_hash(user.user_key, user_key):
-            return jsonify({'message': 'Invalid username or password'}), 401
+            return jsonify({'message': '用户名或密码错误', 'code': 509})
 
         # You can generate a token here if you want to implement token-based authentication
-
-        return jsonify({'message': 'Login successful!'}), 200
+        print(data)
+        return jsonify({'message': '登录成功', 'code': 1000})
     except Exception as e:
-        return jsonify({'message': str(e)}), 500
+        return jsonify({'message': str(e), 'code': 500})
 
 
 @app.route('/modify_password', methods=['POST'])
