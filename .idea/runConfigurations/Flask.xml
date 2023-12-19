@@ -2,7 +2,7 @@
   <configuration default="false" name="Flask" type="Python.FlaskServer">
     <option name="flaskDebug" value="true" />
     <module name="BUAA_Forum_Backend" />
-    <option name="target" value="D:\文木\桌面\ddl\数据库\大作业（北航树洞）\BUAA_Forum_Backend\backend\app.py" />
+    <option name="target" value="$PROJECT_DIR$/backend/app.py" />
     <option name="targetType" value="PATH" />
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />

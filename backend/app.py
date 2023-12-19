@@ -21,13 +21,14 @@ def register():
     # 提取前端发送的数据
     username = data.get('username')
     academy = data.get('academy')
+    email = data.get('email')
     gender = data.get('gender')
     password = data.get('password')
     confirm_password = data.get('confirm_password')
 
     # 检查数据是否为空
-    if not all([username, academy, gender, password, confirm_password]):
-        return jsonify({'message': '不允许为空', 'code': 309, })
+    if not all([username, gender, password, confirm_password]):
+        return jsonify({'message': '请填写必填项', 'code': 309})
 
     # 检查用户名是否已存在
     existing_user = User.query.filter_by(user_name=username).first()
@@ -38,7 +39,7 @@ def register():
         return jsonify({'message': '确认密码错误', 'code': 509})
     hashed_password = generate_password_hash(password, method='sha256')
 
-    new_user = User(user_name=username, user_key=password)
+    new_user = User(user_name=username, user_key=hashed_password, gender=gender, academy=academy, email=email)
     db.session.add(new_user)
     db.session.commit()
 

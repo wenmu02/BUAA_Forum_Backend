@@ -11,7 +11,9 @@ class User(db.Model):
     user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_name = db.Column(db.String(20), nullable=False, unique=True)
     user_key = db.Column(db.Text, nullable=False)
-
+    gender = db.Column(db.Integer, nullable=False)
+    academy = db.Column(db.Text, nullable=True)
+    email = db.Column(db.Text, nullable=True)
 
 # 定义帖子表模型
 class Post(db.Model):
