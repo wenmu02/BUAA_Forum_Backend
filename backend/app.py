@@ -1,15 +1,16 @@
-from flask import Flask, render_template, url_for, jsonify, request
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import pymysql
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_sqlalchemy import SQLAlchemy
 
 pymysql.install_as_MySQLdb()
-
 app = Flask(__name__)
 CORS(app)
 # 配置数据库连接信息，例如数据库的URI
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:lxj021105@localhost:3306/buaa'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 from model import *
 
 
@@ -17,24 +18,31 @@ from model import *
 def register():
     data = request.get_json()
 
-    user_name = data.get('user_name')
-    user_key = data.get('user_key')
+    # 提取前端发送的数据
+    username = data.get('username')
+    academy = data.get('academy')
+    gender = data.get('gender')
+    password = data.get('password')
+    confirm_password = data.get('confirm_password')
 
-    if not user_name or not user_key:
-        return jsonify({'message': 'Missing username or password'}), 400
+    # 检查数据是否为空
+    if not all([username, academy, gender, password, confirm_password]):
+        return jsonify({'message': '不允许为空', 'code': 309, })
 
     # 检查用户名是否已存在
-    existing_user = User.query.filter_by(user_name=user_name).first()
+    existing_user = User.query.filter_by(user_name=username).first()
     if existing_user:
-        return jsonify({'message': 'Username already exists. Choose a different username.'}), 409
+        return jsonify({'message': '用户名已存在，请更换用户名', 'code': 409})
 
-    hashed_password = generate_password_hash(user_key, method='sha256')
+    if password != confirm_password:
+        return jsonify({'message': '确认密码错误', 'code': 509})
+    hashed_password = generate_password_hash(password, method='sha256')
 
-    new_user = User(user_name=user_name, user_key=hashed_password)
+    new_user = User(user_name=username, user_key=password)
     db.session.add(new_user)
     db.session.commit()
 
-    return jsonify({'message': 'User registered successfully!'}), 201
+    return jsonify({'message': '注册成功', 'code': 1000})
 
 
 @app.route('/login', methods=['POST'])

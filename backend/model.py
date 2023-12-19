@@ -1,5 +1,5 @@
-from app import app
 from flask_sqlalchemy import SQLAlchemy
+from app import app
 
 # 初始化数据库
 db = SQLAlchemy(app)
@@ -31,4 +31,3 @@ class Comment(db.Model):
     to_id = db.Column(db.Integer, db.ForeignKey('posts.post_id', ondelete='CASCADE'), nullable=False)
     user = db.relationship('User', backref=db.backref('comments', cascade='all, delete-orphan'))
     post = db.relationship('Post', backref=db.backref('comments', cascade='all, delete-orphan'))
-
