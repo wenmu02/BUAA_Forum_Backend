@@ -13,7 +13,7 @@ CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:lxj021105@localhost:3306/buaa'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # 设置密钥，用于加密 JWT
-app.config['JWT_SECRET_KEY'] = 'your-secret-key'
+app.config['JWT_SECRET_KEY'] = 'qwsdcvhjkaok'
 jwt = JWTManager(app)
 
 from model import *
@@ -92,8 +92,9 @@ def modify_password():
 # 注销用户
 @app.route('/logout/', methods=['POST'])
 @jwt_required()
-def logout(user_name):
-    user = User.query.filter_by(user_name=user_name).first()
+def logout():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
 
     if not user:
         return jsonify({'message': 'User not found'}), 404
@@ -106,34 +107,52 @@ def logout(user_name):
 
 # 发帖
 @app.route('/create_post', methods=['POST'])
+@jwt_required()
 def create_post():
-    try:
-        data = request.get_json()
-        # 从请求中获取数据
-        user_id = data['user_id']
-        content = data['content']
-        tag_name = data['tag_name']
-        title = data['title']
-        # 获取当前时间
-        current_time = datetime.utcnow()
+    data = request.get_json()
+    # 从请求中获取数据
+    user_id = get_jwt_identity()
+    content = data['content']
+    tag_name = data['tag_name']
+    title = data['title']
+    # 获取当前时间
+    current_time = datetime.utcnow()
 
-        # 创建新的帖子并添加到数据库
-        user = User.query.get(user_id)
-        if user:
-            new_post = Post(content=content, u_id=user_id, title=title, post_time=current_time)
-            db.session.add(new_post)
-            tag = Tag.query.filter_by(tag_name=tag_name).first()
-            if tag:
-                new_post_tag = PostTag(post_id=new_post.post_id, tag_id=tag.tag_id)
-                db.session.add(new_post_tag)
-            else:
-                return jsonify({'error': '标签不存在', 'code': 409})
-            db.session.commit()
-            return jsonify({'message': '发帖成功', 'code': 1000})
+    # 创建新的帖子并添加到数据库
+    user = User.query.get(user_id)
+    if user:
+        if not content or not title:
+            return jsonify({'message': '未填写标题和内容', 'code': 409})
+        new_post = Post(content=content, u_id=user_id, title=title, post_time=current_time)
+        db.session.add(new_post)
+
+        tag = Tag.query.filter_by(tag_name=tag_name).first()
+        if tag:
+            new_post_tag = PostTag(post_id=new_post.post_id, tag_id=tag.tag_id)
+            db.session.add(new_post_tag)
         else:
-            return jsonify({'error': '用户不存在或未登录', 'code': 409})
-    except Exception as e:
-        return jsonify({'error': str(e), 'code': 500})
+            return jsonify({'message': '标签不存在', 'code': 409})
+        db.session.commit()
+        return jsonify({'message': '发帖成功', 'code': 1000})
+    else:
+        return jsonify({'message': '用户不存在或未登录', 'code': 409})
+
+
+@app.route('/get_tags', methods=['GET'])
+@jwt_required()
+def get_tags():
+    tags = Tag.query.all()
+
+    # 构建标签信息列表
+    tag_list = []
+    for tag in tags:
+        tag_info = {
+            'tag_id': tag.tag_id,
+            'tag_name': tag.tag_name
+        }
+        tag_list.append(tag_info)
+
+    return jsonify({'data': tag_list}), 200
 
 
 @app.route('/show_posts', methods=['GET'])
