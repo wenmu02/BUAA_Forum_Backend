@@ -4,6 +4,7 @@ import pymysql
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime  # 导入datetime模块
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 pymysql.install_as_MySQLdb()
 app = Flask(__name__)
@@ -11,6 +12,9 @@ CORS(app)
 # 配置数据库连接信息，例如数据库的URI
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:lxj021105@localhost:3306/buaa'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# 设置密钥，用于加密 JWT
+app.config['JWT_SECRET_KEY'] = 'your-secret-key'
+jwt = JWTManager(app)
 
 from model import *
 
@@ -65,7 +69,9 @@ def login():
 
         # You can generate a token here if you want to implement token-based authentication
         user_id = user.user_id
-        return jsonify({'message': '登录成功', 'code': 1000, 'user_id': user_id, 'user_name': user_name})
+        access_token = create_access_token(identity=user_id)
+        return jsonify({'message': '登录成功', 'code': 1000,
+                        'user': {'access_token': access_token, 'user_id': user_id, 'user_name': user_name}})
     except Exception as e:
         return jsonify({'message': str(e), 'code': 500})
 
@@ -84,7 +90,8 @@ def modify_password():
 
 
 # 注销用户
-@app.route('/logout/<string:user_name>', methods=['POST'])
+@app.route('/logout/', methods=['POST'])
+@jwt_required()
 def logout(user_name):
     user = User.query.filter_by(user_name=user_name).first()
 
