@@ -26,6 +26,13 @@ class Post(db.Model):
     post_time = db.Column(db.DateTime, nullable=True)
     title = db.Column(db.String(255), nullable=False)
 
+    def comment_count(self):
+        # Return the count of comments for this post
+        return Comment.query.filter_by(to_id=self.post_id).count()
+
+    def likes_count(self):
+        return PostLikes.query.filter_by(post_id=self.post_id).count()
+
 
 # 定义评论表模型
 class Comment(db.Model):
@@ -48,10 +55,15 @@ class Tag(db.Model):
 class PostTag(db.Model):
     __tablename__ = 'post_tags'
     post_tag_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.post_id', ondelete='CASCADE'), nullable=True)
-    tag_id = db.Column(db.Integer, db.ForeignKey('tags.tag_id', ondelete='CASCADE'), nullable=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.post_id', ondelete='CASCADE'), nullable=False)
+    tag_id = db.Column(db.Integer, db.ForeignKey('tags.tag_id', ondelete='CASCADE'), nullable=False)
 
     post = db.relationship('Post', backref=db.backref('post_tags', cascade='all, delete-orphan'))
     tag = db.relationship('Tag', backref=db.backref('post_tags', cascade='all, delete-orphan'))
 
 
+class PostLikes(db.Model):
+    __tablename__ = 'post_likes'
+    like_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.post_id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)

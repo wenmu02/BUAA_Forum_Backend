@@ -2,7 +2,6 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import pymysql
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime  # 导入datetime模块
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
@@ -155,24 +154,72 @@ def get_tags():
     return jsonify({'data': tag_list}), 200
 
 
-@app.route('/show_posts', methods=['GET'])
+@app.route('/get_posts', methods=['GET'])
 def get_posts():
+    # Extract query parameters from the request
+    page = int(request.args.get('page', 1))
+    size = int(request.args.get('size', 5))
+    order = request.args.get('order', 'time')  # Default to 'time' if not provided
+
     posts = Post.query.all()
+    if order == 'time':
+        sorted_posts = sorted(posts, key=lambda x: x.post_time, reverse=True)
+    else:
+        sorted_posts = sorted(posts, key=lambda x: x.likes_count(), reverse=True)
+
+    start_index = size * (page - 1) + 1
+    end_index = start_index + size
     post_list = []
+    cnt = 0
+    for post in sorted_posts:
+        cnt += 1
+        if start_index <= cnt < end_index:
+            post_info = {
+                'post_id': post.post_id,
+                'title': post.title,
+                'content': post.content,
+                'like_num': post.likes_count(),
+                'user_id': post.u_id,
+                'post_time': post.post_time,
+                'comments': post.comment_count()
+                # Add more fields as needed
+            }
+            post_list.append(post_info)
+    return jsonify({'data': post_list, 'total_num': cnt, 'code': 1000})
 
+
+# 路由处理函数
+@app.route('/search_post', methods=['GET'])
+def search_posts():
+    # 获取前端传递的参数
+    page = int(request.args.get('page', 1))
+    size = int(request.args.get('size', 5))
+    keyword = request.args.get('keyword', '')
+
+    posts = Post.query.all()
+
+    start_index = size * (page - 1) + 1
+    end_index = start_index + size
+    post_list = []
+    cnt = 0
     for post in posts:
-        post_info = {
-            'post_id': post.post_id,
-            'content': post.content,
-            'user_id': post.user_id,
-            'post_time': post.post_time,
-            'title': post.title
-            # Add more fields as needed
-        }
-        post_list.append(post_info)
-
-    print(jsonify({'posts': post_list}))
-    return jsonify({'posts': post_list})
+        if keyword in post.title or keyword in post.content:
+            cnt += 1
+            post_info = {
+                'post_id': post.post_id,
+                'title': post.title,
+                'content': post.content,
+                'like_num': post.likes_count(),
+                'user_id': post.u_id,
+                'post_time': post.post_time,
+                'comments': post.comment_count()
+                # Add more fields as needed
+            }
+            post_list.append(post_info)
+    if end_index > cnt:
+        end_index = cnt
+    post_list = post_list[start_index - 1:end_index]
+    return jsonify({'data': post_list, 'total_num': cnt, 'code': 1000})
 
 
 # API endpoint for deleting a post
