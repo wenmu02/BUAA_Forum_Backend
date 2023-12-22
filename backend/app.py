@@ -76,16 +76,18 @@ def login():
 
 
 @app.route('/modify_password', methods=['POST'])
+@jwt_required()
 def modify_password():
     data = request.get_json()
-    user = User.query.filter_by(user_name=data['user_name']).first()
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
 
-    if user and check_password_hash(user.user_key, data['old_password']):
-        user.user_key = generate_password_hash(data['new_password'], method='sha256')
+    if user and check_password_hash(user.user_key, data['oldPassword']):
+        user.user_key = generate_password_hash(data['newPassword'], method='sha256')
         db.session.commit()
-        return jsonify({'message': '密码修改成功'}), 200
+        return jsonify({'message': '密码修改成功', 'code': 1000}), 200
     else:
-        return jsonify({'message': '无效的凭证或旧密码'}), 401
+        return jsonify({'message': '无效的凭证或旧密码', 'code': 401}), 401
 
 
 # 注销用户
@@ -332,18 +334,18 @@ def get_comments_for_post():
 @jwt_required()
 def get_user():
     # Get the user_id from the query parameters
-    user_id = request.args.get('user_id', type=int)
+    user_id = get_jwt_identity()
 
     # Check if user_id is provided
     if user_id is None:
-        return jsonify({'error': 'Parameter user_id is missing'}), 400
+        return jsonify({'message': 'Parameter user_id is missing', 'code': 400}), 400
 
     # Query the database for the user with the given user_id
     user = User.query.get(user_id)
 
     # Check if the user exists
     if user is None:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({'message': 'User not found', 'code': 404}), 404
 
     # If the user exists, create a dictionary with user information
     user_info = {
@@ -355,7 +357,7 @@ def get_user():
     }
 
     # Return the user information as JSON
-    return jsonify(user_info), 200
+    return jsonify({'user': user_info, 'code': 1000}), 200
 
 
 @app.route('/posts/<int:post_id>', methods=['GET'])
@@ -381,6 +383,63 @@ def get_post_of(post_id):
 
     # Return the post information as JSON
     return jsonify({'post': post_info, 'code': 1000})
+
+
+@app.route('/vote', methods=['POST'])
+@jwt_required()
+def vote():
+    try:
+        # Get data from the request
+        data = request.get_json()
+        post_id = data.get('post_id')
+
+        # Assuming you have a user authentication mechanism (replace this with your own logic)
+        # For example, you can get user information from a session or token
+        user_id = get_jwt_identity()
+
+        # Check if the user has already liked the post
+        existing_like = PostLikes.query.filter_by(user_id=user_id, post_id=post_id).first()
+        if existing_like:
+            return jsonify({'code': 1009, 'message': '请勿重复点赞'}), 200
+
+        # Perform additional checks or business logic here...
+
+        # Create a new like record
+        new_like = PostLikes(user_id=user_id, post_id=post_id)
+        db.session.add(new_like)
+        db.session.commit()
+
+        return jsonify({'code': 1000, 'message': '点赞成功'}), 200
+
+    except Exception as e:
+        # Handle exceptions (e.g., database errors) appropriately
+        return jsonify({'code': 500, 'msg': str(e)}), 500
+
+
+@app.route('/change_user', methods=['POST'])
+@jwt_required()
+def update_user_info():
+    # 从请求中获取用户信息
+    user_id = get_jwt_identity()
+    data = request.json
+    # 根据用户名查找用户
+    user = User.query.get(user_id)
+
+    if user:
+        # 更新用户信息
+        user.gender = data['gender']
+        user.academy = data['academy']
+        user.email = data['email']
+        # 检查新用户名是否与其他用户冲突
+        if User.query.filter_by(user_name=data['user_name']).first():
+            return jsonify({'message': '新用户名已被占用', 'code': 409})
+        user.user_name = data['user_name']
+        # 提交更改到数据库
+        db.session.commit()
+
+        return jsonify({'message': '用户信息更新成功', 'code': 1000})
+    else:
+        return jsonify({'message': '找不到用户', 'code': 509})
 
 
 if __name__ == '__main__':
