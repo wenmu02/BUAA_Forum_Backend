@@ -188,7 +188,6 @@ def get_posts():
     return jsonify({'data': post_list, 'total_num': cnt, 'code': 1000})
 
 
-# 路由处理函数
 @app.route('/search_post', methods=['GET'])
 def search_posts():
     # 获取前端传递的参数
@@ -327,6 +326,61 @@ def get_comments_for_post():
 
     except Exception as e:
         return jsonify({'error': str(e), 'code': 500})
+
+
+@app.route('/get_user', methods=['GET'])
+@jwt_required()
+def get_user():
+    # Get the user_id from the query parameters
+    user_id = request.args.get('user_id', type=int)
+
+    # Check if user_id is provided
+    if user_id is None:
+        return jsonify({'error': 'Parameter user_id is missing'}), 400
+
+    # Query the database for the user with the given user_id
+    user = User.query.get(user_id)
+
+    # Check if the user exists
+    if user is None:
+        return jsonify({'error': 'User not found'}), 404
+
+    # If the user exists, create a dictionary with user information
+    user_info = {
+        'user_id': user.user_id,
+        'user_name': user.user_name,
+        'gender': user.gender,
+        'academy': user.academy,
+        'email': user.email
+    }
+
+    # Return the user information as JSON
+    return jsonify(user_info), 200
+
+
+@app.route('/posts/<int:post_id>', methods=['GET'])
+def get_post_of(post_id):
+    # Query the database for the post with the given post_id
+    post = Post.query.get(post_id)
+
+    # Check if the post exists
+    if post is None:
+        return jsonify({'message': 'Post not found', 'code': 404})
+
+    # Create a dictionary with post information
+    post_info = {
+        'post_id': post.post_id,
+        'title': post.title,
+        'content': post.content,
+        'user_id': post.user.user_id,
+        'user_name': post.user.user_name,
+        'post_time': post.post_time.isoformat(),
+        'comment_count': post.comment_count(),
+        'likes_count': post.likes_count()
+    }
+
+    # Return the post information as JSON
+    return jsonify({'post': post_info, 'code': 1000})
 
 
 if __name__ == '__main__':
