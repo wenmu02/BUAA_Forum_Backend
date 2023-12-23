@@ -247,11 +247,12 @@ def delete_post(post_id):
 
 
 @app.route('/post_comment', methods=['POST'])
+@jwt_required()
 def post_comment():
     try:
         data = request.get_json()
         content = data['content']
-        from_user_id = data['from_user_id']
+        from_user_id = get_jwt_identity()
         user = User.query.get(from_user_id)
         to_post_id = data['to_post_id']
         post = Post.query.get(to_post_id)
@@ -272,14 +273,15 @@ def post_comment():
 
 
 # API endpoint for deleting a comment
-@app.route('/delete_comment/<int:comment_id>', methods=['DELETE'])
+@app.route('/delete_comment/<int:comment_id>', methods=['POST'])
+@jwt_required()
 def delete_comment(comment_id):
     try:
         # Get the comment by comment_id
         comment_to_delete = Comment.query.get(comment_id)
 
         # Check if the logged-in user is the owner of the post
-        logged_in_user_id = request.headers.get('user_id')
+        logged_in_user_id = jwt_required()
 
         if comment_to_delete.user_id == logged_in_user_id:
             # Delete the post if the user is the owner
