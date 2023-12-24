@@ -1,7 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import pymysql
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 pymysql.install_as_MySQLdb()
@@ -15,11 +14,9 @@ app.config['JWT_SECRET_KEY'] = 'qwsdcvhjkaok'
 jwt = JWTManager(app)
 
 from model import *
-
 from user import *
 from post import *
-
-
+from community import *
 
 
 @app.route('/post_comment', methods=['POST'])
@@ -108,9 +105,6 @@ def get_comments_for_post():
         return jsonify({'error': str(e), 'code': 500})
 
 
-
-
-
 @app.route('/vote', methods=['POST'])
 @jwt_required()
 def vote():
@@ -142,100 +136,6 @@ def vote():
         return jsonify({'code': 500, 'msg': str(e)}), 500
 
 
-
-
-@app.route('/community', methods=['POST'])
-@jwt_required()
-def create_community():
-    data = request.json
-    community_name = data.get('community_name')
-    description = data.get('description')
-
-    new_community = Community(community_name=community_name, description=description)
-
-    try:
-        db.session.add(new_community)
-        db.session.commit()
-        return jsonify({"message": "Community created successfully"}), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/join_community', methods=['POST'])
-@jwt_required()
-def join_community():
-    data = request.json
-    user_id = get_jwt_identity()
-    community_id = data.get('community_id')
-
-    new_community_user = CommunityUser(user_id=user_id, community_id=community_id)
-
-    if CommunityUser.query.filter_by(user_id=user_id, community_id=community_id).first():
-        return jsonify({"message": "重复加入社区", 'code': 509})
-    db.session.add(new_community_user)
-    db.session.commit()
-    return jsonify({"message": "成功加入社区", "code": 1000})
-
-
-@app.route('/get_communities', methods=['GET'])
-def get_communities():
-    page = int(request.args.get('page', 1))
-    size = int(request.args.get('size', 5))
-    start_index = size * (page - 1) + 1
-    end_index = start_index + size
-
-    communities = Community.query.all()
-    community_list = []
-    cnt = 0
-    for community in communities:
-        cnt += 1
-        if start_index <= cnt < end_index:
-            users = db.session.query(User).join(CommunityUser).filter(
-                CommunityUser.community_id == community.community_id).all()
-            community_info = {
-                'community_id': community.community_id,
-                'community_name': community.community_name,
-                'description': community.description,
-                'users': [{'user_id': user.user_id, 'user_name': user.user_name} for user in users]
-                # Add more fields as needed
-            }
-            community_list.append(community_info)
-    return jsonify({'data': community_list, 'total_num': cnt, 'code': 1000})
-
-
-@app.route('/search_community', methods=['GET'])
-def search_community():
-    page = int(request.args.get('page', 1))
-    size = int(request.args.get('size', 5))
-    keyword = str(request.args.get('keyword', ''))
-
-    start_index = size * (page - 1) + 1
-    end_index = start_index + size
-
-    communities = Community.query.all()
-    community_list = []
-    cnt = 0
-    for community in communities:
-        if keyword in community.community_name:
-            cnt += 1
-            users = db.session.query(User).join(CommunityUser).filter(
-                CommunityUser.community_id == community.community_id).all()
-            community_info = {
-                'community_id': community.community_id,
-                'community_name': community.community_name,
-                'description': community.description,
-                'users': [{'user_id': user.user_id, 'user_name': user.user_name} for user in users]
-            }
-            community_list.append(community_info)
-    if end_index > cnt:
-        end_index = cnt
-    community_list = community_list[start_index - 1:end_index]
-    return jsonify({'data': community_list, 'total_num': cnt, 'code': 1000})
-
-
-
-
 @app.route('/add_friendship', methods=['POST'])
 @jwt_required()
 def add_friendship():
@@ -258,6 +158,23 @@ def add_friendship():
     db.session.commit()
 
     return jsonify({'message': '成功关注', 'code': 1000})
+
+
+@app.route('/get_tags', methods=['GET'])
+@jwt_required()
+def get_tags():
+    tags = Tag.query.all()
+
+    # 构建标签信息列表
+    tag_list = []
+    for tag in tags:
+        tag_info = {
+            'tag_id': tag.tag_id,
+            'tag_name': tag.tag_name
+        }
+        tag_list.append(tag_info)
+
+    return jsonify({'data': tag_list}), 200
 
 
 if __name__ == '__main__':

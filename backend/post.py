@@ -38,21 +38,6 @@ def create_post():
         return jsonify({'message': '用户不存在或未登录', 'code': 409})
 
 
-@app.route('/get_tags', methods=['GET'])
-@jwt_required()
-def get_tags():
-    tags = Tag.query.all()
-
-    # 构建标签信息列表
-    tag_list = []
-    for tag in tags:
-        tag_info = {
-            'tag_id': tag.tag_id,
-            'tag_name': tag.tag_name
-        }
-        tag_list.append(tag_info)
-
-    return jsonify({'data': tag_list}), 200
 
 
 @app.route('/get_posts', methods=['GET'])
