@@ -12,7 +12,7 @@ def create_post():
     # 从请求中获取数据
     user_id = get_jwt_identity()
     content = data['content']
-    tag_name = data['tag_name']
+    tag_names = data['tag_names']
     title = data['title']
     # 获取当前时间
     current_time = datetime.utcnow()
@@ -25,12 +25,13 @@ def create_post():
         new_post = Post(content=content, u_id=user_id, title=title, post_time=current_time)
         db.session.add(new_post)
 
-        tag = Tag.query.filter_by(tag_name=tag_name).first()
-        if tag:
-            new_post_tag = PostTag(post_id=new_post.post_id, tag_id=tag.tag_id)
-            db.session.add(new_post_tag)
-        else:
-            return jsonify({'message': '标签不存在', 'code': 409})
+        for tag_name in tag_names:
+            tag = Tag.query.filter_by(tag_name=tag_name).first()
+            if tag:
+                new_post_tag = PostTag(post_id=new_post.post_id, tag_id=tag.tag_id)
+                db.session.add(new_post_tag)
+            else:
+                return jsonify({'message': '标签不存在', 'code': 409})
         db.session.commit()
         return jsonify({'message': '发帖成功', 'code': 1000})
     else:

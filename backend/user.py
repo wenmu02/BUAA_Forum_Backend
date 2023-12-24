@@ -72,9 +72,9 @@ def modify_password():
     if user and check_password_hash(user.user_key, data['oldPassword']):
         user.user_key = generate_password_hash(data['newPassword'], method='sha256')
         db.session.commit()
-        return jsonify({'message': '密码修改成功', 'code': 1000}), 200
+        return jsonify({'message': '密码修改成功', 'code': 1000})
     else:
-        return jsonify({'message': '无效的凭证或旧密码', 'code': 401}), 401
+        return jsonify({'message': '无效的凭证或旧密码', 'code': 401})
 
 
 # 注销用户
