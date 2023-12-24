@@ -176,6 +176,14 @@ def get_posts():
     for post in sorted_posts:
         cnt += 1
         if start_index <= cnt < end_index:
+            post_tags = (
+                db.session.query(Tag.tag_name)
+                .join(PostTag, Tag.tag_id == PostTag.tag_id)
+                .filter(PostTag.post_id == post.post_id)
+                .all()
+            )
+
+            tag_names = [tag.tag_name for tag in post_tags]
             post_info = {
                 'post_id': post.post_id,
                 'title': post.title,
@@ -183,7 +191,8 @@ def get_posts():
                 'like_num': post.likes_count(),
                 'user_id': post.u_id,
                 'post_time': post.post_time,
-                'comments': post.comment_count()
+                'comments': post.comment_count(),
+                'tag_names':tag_names
                 # Add more fields as needed
             }
             post_list.append(post_info)
@@ -371,6 +380,15 @@ def get_post_of(post_id):
     if post is None:
         return jsonify({'message': 'Post not found', 'code': 404})
 
+    post_tags = (
+        db.session.query(Tag.tag_name)
+        .join(PostTag, Tag.tag_id == PostTag.tag_id)
+        .filter(PostTag.post_id == post_id)
+        .all()
+    )
+
+    tag_names = [tag.tag_name for tag in post_tags]
+
     # Create a dictionary with post information
     post_info = {
         'post_id': post.post_id,
@@ -380,7 +398,8 @@ def get_post_of(post_id):
         'user_name': post.user.user_name,
         'post_time': post.post_time.isoformat(),
         'comment_count': post.comment_count(),
-        'likes_count': post.likes_count()
+        'likes_count': post.likes_count(),
+        'tag_names': tag_names
     }
 
     # Return the post information as JSON
@@ -442,6 +461,91 @@ def update_user_info():
         return jsonify({'message': '用户信息更新成功', 'code': 1000})
     else:
         return jsonify({'message': '找不到用户', 'code': 509})
+
+
+@app.route('/community', methods=['POST'])
+@jwt_required()
+def create_community():
+    data = request.json
+    community_name = data.get('community_name')
+    description = data.get('description')
+
+    new_community = Community(community_name=community_name, description=description)
+
+    try:
+        db.session.add(new_community)
+        db.session.commit()
+        return jsonify({"message": "Community created successfully"}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/join_community', methods=['POST'])
+@jwt_required()
+def join_community():
+    data = request.json
+    user_id = get_jwt_identity()
+    community_id = data.get('community_id')
+
+    new_community_user = CommunityUser(user_id=user_id, community_id=community_id)
+
+    if CommunityUser.query.filter_by(user_id=user_id, community_id=community_id).first():
+        return jsonify({"message": "重复加入社区", 'code': 509})
+    db.session.add(new_community_user)
+    db.session.commit()
+    return jsonify({"message": "成功加入社区", "code": 1000})
+
+
+@app.route('/get_communities', methods=['GET'])
+def get_communities():
+    page = int(request.args.get('page', 1))
+    size = int(request.args.get('size', 5))
+    start_index = size * (page - 1) + 1
+    end_index = start_index + size
+
+    communities = Community.query.all()
+    community_list = []
+    cnt = 0
+    for community in communities:
+        cnt += 1
+        if start_index <= cnt < end_index:
+            community_info = {
+                'community_id': community.community_id,
+                'community_name': community.community_name,
+                'description': community.description
+                # Add more fields as needed
+            }
+            community_list.append(community_info)
+    return jsonify({'data': community_list, 'total_num': cnt, 'code': 1000})
+
+
+@app.route('/search_community', methods=['GET'])
+def search_community():
+    page = int(request.args.get('page', 1))
+    size = int(request.args.get('size', 5))
+    keyword = str(request.args.get('keyword', ''))
+
+    start_index = size * (page - 1) + 1
+    end_index = start_index + size
+
+    communities = Community.query.all()
+    community_list = []
+    cnt = 0
+    for community in communities:
+        if keyword in community.community_name:
+            cnt += 1
+            community_info = {
+                'community_id': community.community_id,
+                'community_name': community.community_name,
+                'description': community.description
+                # Add more fields as needed
+            }
+            community_list.append(community_info)
+    if end_index > cnt:
+        end_index = cnt
+    community_list = community_list[start_index - 1:end_index]
+    return jsonify({'data': community_list, 'total_num': cnt, 'code': 1000})
 
 
 if __name__ == '__main__':
