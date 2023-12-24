@@ -9,7 +9,7 @@ db = SQLAlchemy(app)
 class User(db.Model):
     __tablename__ = 'users'
     user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_name = db.Column(db.String(20), nullable=False, unique=True)
+    user_name = db.Column(db.String(128), nullable=False, unique=True)
     user_key = db.Column(db.Text, nullable=False)
     gender = db.Column(db.String(20), nullable=False)
     academy = db.Column(db.Text, nullable=True)
