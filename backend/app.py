@@ -190,9 +190,10 @@ def get_posts():
                 'content': post.content,
                 'like_num': post.likes_count(),
                 'user_id': post.u_id,
+                'user_name': post.user.user_name,
                 'post_time': post.post_time,
                 'comments': post.comment_count(),
-                'tag_names':tag_names
+                'tag_names': tag_names
                 # Add more fields as needed
             }
             post_list.append(post_info)
