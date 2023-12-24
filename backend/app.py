@@ -216,14 +216,24 @@ def search_posts():
     for post in posts:
         if keyword in post.title or keyword in post.content:
             cnt += 1
+            post_tags = (
+                db.session.query(Tag.tag_name)
+                .join(PostTag, Tag.tag_id == PostTag.tag_id)
+                .filter(PostTag.post_id == post.post_id)
+                .all()
+            )
+
+            tag_names = [tag.tag_name for tag in post_tags]
             post_info = {
                 'post_id': post.post_id,
                 'title': post.title,
                 'content': post.content,
                 'like_num': post.likes_count(),
                 'user_id': post.u_id,
+                'user_name': post.user.user_name,
                 'post_time': post.post_time,
-                'comments': post.comment_count()
+                'comments': post.comment_count(),
+                'tag_names': tag_names
                 # Add more fields as needed
             }
             post_list.append(post_info)
@@ -235,25 +245,22 @@ def search_posts():
 
 # API endpoint for deleting a post
 @app.route('/delete_post/<int:post_id>', methods=['POST'])
+@jwt_required()
 def delete_post(post_id):
-    try:
-        # Get the post by post_id
-        post_to_delete = Post.query.get(post_id)
+    # Get the post by post_id
+    post_to_delete = Post.query.get(post_id)
 
-        # Check if the logged-in user is the owner of the post
-        logged_in_user_id = request.headers.get('user_id')
+    # Check if the logged-in user is the owner of the post
+    logged_in_user_id = get_jwt_identity()
 
-        if post_to_delete.user_id == logged_in_user_id:
-            # Delete the post if the user is the owner
-            db.session.delete(post_to_delete)
-            db.session.commit()
-            return jsonify({'message': 'Post deleted successfully'}), 200
-        else:
-            # Return an error if the user is not the owner
-            return jsonify({'error': 'You are not authorized to delete this post'}), 403
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    if post_to_delete.u_id == logged_in_user_id:
+        # Delete the post if the user is the owner
+        db.session.delete(post_to_delete)
+        db.session.commit()
+        return jsonify({'message': 'Post deleted successfully', 'code': 1000})
+    else:
+        # Return an error if the user is not the owner
+        return jsonify({'error': 'You are not authorized to delete this post', 'code': 5090})
 
 
 @app.route('/post_comment', methods=['POST'])
@@ -547,6 +554,92 @@ def search_community():
         end_index = cnt
     community_list = community_list[start_index - 1:end_index]
     return jsonify({'data': community_list, 'total_num': cnt, 'code': 1000})
+
+
+@app.route('/get_myposts', methods=['GET'])
+@jwt_required()
+def get_myposts():
+    # Extract query parameters from the request
+    page = int(request.args.get('page', 1))
+    size = int(request.args.get('size', 5))
+    user_id = get_jwt_identity()
+
+    posts = Post.query.filter_by(u_id=user_id)
+
+    start_index = size * (page - 1) + 1
+    end_index = start_index + size
+    post_list = []
+    cnt = 0
+    for post in posts:
+        cnt += 1
+        if start_index <= cnt < end_index:
+            post_tags = (
+                db.session.query(Tag.tag_name)
+                .join(PostTag, Tag.tag_id == PostTag.tag_id)
+                .filter(PostTag.post_id == post.post_id)
+                .all()
+            )
+
+            tag_names = [tag.tag_name for tag in post_tags]
+            post_info = {
+                'post_id': post.post_id,
+                'title': post.title,
+                'content': post.content,
+                'like_num': post.likes_count(),
+                'user_id': post.u_id,
+                'user_name': post.user.user_name,
+                'post_time': post.post_time,
+                'comments': post.comment_count(),
+                'tag_names': tag_names
+                # Add more fields as needed
+            }
+            post_list.append(post_info)
+    return jsonify({'data': post_list, 'total_num': cnt, 'code': 1000})
+
+
+@app.route('/search_mypost', methods=['GET'])
+@jwt_required()
+def search_myposts():
+    # 获取前端传递的参数
+    page = int(request.args.get('page', 1))
+    size = int(request.args.get('size', 5))
+    keyword = request.args.get('keyword', '')
+    user_id = get_jwt_identity()
+
+    posts = Post.query.filter_by(u_id=user_id)
+
+    start_index = size * (page - 1) + 1
+    end_index = start_index + size
+    post_list = []
+    cnt = 0
+    for post in posts:
+        if keyword in post.title or keyword in post.content:
+            cnt += 1
+            post_tags = (
+                db.session.query(Tag.tag_name)
+                .join(PostTag, Tag.tag_id == PostTag.tag_id)
+                .filter(PostTag.post_id == post.post_id)
+                .all()
+            )
+
+            tag_names = [tag.tag_name for tag in post_tags]
+            post_info = {
+                'post_id': post.post_id,
+                'title': post.title,
+                'content': post.content,
+                'like_num': post.likes_count(),
+                'user_id': post.u_id,
+                'user_name': post.user.user_name,
+                'post_time': post.post_time,
+                'comments': post.comment_count(),
+                'tag_names': tag_names
+                # Add more fields as needed
+            }
+            post_list.append(post_info)
+    if end_index > cnt:
+        end_index = cnt
+    post_list = post_list[start_index - 1:end_index]
+    return jsonify({'data': post_list, 'total_num': cnt, 'code': 1000})
 
 
 if __name__ == '__main__':
