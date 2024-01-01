@@ -103,23 +103,46 @@ def get_followed_users():
     return jsonify({'followed_users': user_list, 'code': 1000})
 
 
-@app.route('/get_user_communities', methods=['GET'])
+@app.route('/my_communities', methods=['GET'])
 @jwt_required()
-def get_user_communities():
-    user_id = get_jwt_identity()
-    user_communities = db.session.query(Community).join(CommunityUser,
+def my_communities():
+    my_id=get_jwt_identity()
+    page = int(request.args.get('page', 1))
+    size = int(request.args.get('size', 5))
+    start_index = size * (page - 1)+1
+    end_index = start_index + size
+
+    communities = Community.query.all()
+    communities = db.session.query(Community).join(CommunityUser,
                                                         Community.community_id == CommunityUser.community_id).filter(
-        CommunityUser.user_id == user_id).all()
-    community_list = [
-        {'community_id': community.community_id, 'name': community.community_name, 'description': community.description}
-        for
-        community in
-        user_communities]
-    return jsonify({'my_communities': community_list}), 200
+        CommunityUser.user_id == my_id).all()
+    community_list = []
+    cnt = 0
+    total=0
+    for community in communities:
+
+        users = db.session.query(User).join(CommunityUser).filter(
+                CommunityUser.community_id == community.community_id).all()
+
+        community_info = {
+                'community_id': community.community_id,
+                'community_name': community.community_name,
+                'description': community.description,
+                'users': [{'user_id': user.user_id, 'user_name': user.user_name} for user in users]
+                # Add more fields as needed
+            }
+        cnt=cnt+1
+        for user in users:
+            if(int(my_id)==int(user.user_id)):
+                if start_index <= cnt < end_index:
+                    community_list.append(community_info)
+                break
+    return jsonify({'data': community_list, 'total_num': cnt, 'code': 1000,'name':my_id})
 
 
-@app.route('/top_tags/<int:n>', methods=['GET'])
-def top_tags(n):
+@app.route('/top_tags', methods=['GET'])
+def top_tags():
+    n = 4
     try:
         top_tags = db.session.query(Tag.tag_name, func.count(PostTag.post_id).label('post_count')) \
             .join(PostTag, Tag.tag_id == PostTag.tag_id) \
@@ -128,7 +151,7 @@ def top_tags(n):
             .limit(n) \
             .all()
 
-        result = [{'tag_name': tag.tag_name, 'post_count': tag.post_count} for tag in top_tags]
+        result = [{'name': tag.tag_name, 'count': tag.post_count} for tag in top_tags]
         return jsonify({'top_tags': result, 'code': 1000})
     except Exception as e:
         return jsonify({'error': str(e), 'code': 500})

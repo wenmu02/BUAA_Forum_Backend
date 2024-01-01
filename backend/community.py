@@ -110,3 +110,22 @@ def search_community():
         end_index = cnt
     community_list = community_list[start_index - 1:end_index]
     return jsonify({'data': community_list, 'total_num': cnt, 'code': 1000})
+
+
+@app.route('/top_communities', methods=['GET'])
+def top_communities():
+    # Query to get the top four communities with the most users
+    result = db.session.query(Community, db.func.count(CommunityUser.user_id).label('user_count')) \
+        .join(CommunityUser) \
+        .group_by(Community.community_id) \
+        .order_by(db.desc('user_count')) \
+        .limit(4) \
+        .all()
+
+    # Convert the result into a list of dictionaries
+    top_communities = [{'community_id': community.community_id,
+                        'name': community.community_name,
+                        'user_count': user_count}
+                       for community, user_count in result]
+
+    return jsonify({'top_communities': top_communities, 'code': 1000})
