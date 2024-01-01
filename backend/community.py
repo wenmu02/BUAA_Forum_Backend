@@ -16,10 +16,10 @@ def create_community():
     try:
         db.session.add(new_community)
         db.session.commit()
-        return jsonify({"message": "Community created successfully"}), 201
+        return jsonify({"message": "Community created successfully", 'code': 1000})
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Community created failed", 'code': 500})
 
 
 @app.route('/join_community', methods=['POST'])

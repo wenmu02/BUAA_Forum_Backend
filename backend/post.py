@@ -4,6 +4,8 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from model import *
 from app import app, jwt
 from datetime import datetime
+
+
 # 发帖
 @app.route('/create_post', methods=['POST'])
 @jwt_required()
@@ -36,8 +38,6 @@ def create_post():
         return jsonify({'message': '发帖成功', 'code': 1000})
     else:
         return jsonify({'message': '用户不存在或未登录', 'code': 409})
-
-
 
 
 @app.route('/get_posts', methods=['GET'])
@@ -145,6 +145,8 @@ def delete_post(post_id):
     else:
         # Return an error if the user is not the owner
         return jsonify({'error': 'You are not authorized to delete this post', 'code': 5090})
+
+
 @app.route('/posts/<int:post_id>', methods=['GET'])
 def get_post_of(post_id):
     # Query the database for the post with the given post_id
@@ -163,7 +165,6 @@ def get_post_of(post_id):
 
     tag_names = [tag.tag_name for tag in post_tags]
 
-
     # Create a dictionary with post information
     post_info = {
         'post_id': post.post_id,
@@ -180,7 +181,6 @@ def get_post_of(post_id):
 
     # Return the post information as JSON
     return jsonify({'post': post_info, 'code': 1000})
-
 
 
 @app.route('/get_myposts', methods=['GET'])

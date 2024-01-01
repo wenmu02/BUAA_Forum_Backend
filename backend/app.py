@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import pymysql
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from sqlalchemy import func
 
 pymysql.install_as_MySQLdb()
 app = Flask(__name__)
@@ -17,124 +18,7 @@ from model import *
 from user import *
 from post import *
 from community import *
-
-
-@app.route('/post_comment', methods=['POST'])
-@jwt_required()
-def post_comment():
-    data = request.get_json()
-    content = data['content']
-    from_user_id = get_jwt_identity()
-    user = User.query.get(from_user_id)
-    to_post_id = data['to_post_id']
-    post = Post.query.get(to_post_id)
-    comment_time = datetime.utcnow()
-
-    if user and post:
-        # Insert new comment into the 'comments' table
-        new_comment = Comment(content=content, from_id=from_user_id, to_id=to_post_id,
-                              comment_time=comment_time)
-        db.session.add(new_comment)
-        db.session.commit()
-
-        return jsonify({'message': '评论发布成功', 'code': 1000})
-    else:
-        return jsonify({'message': '用户或帖子不存在', 'code': 409})
-
-
-# API endpoint for deleting a comment
-@app.route('/delete_comment/<int:comment_id>', methods=['POST'])
-@jwt_required()
-def delete_comment(comment_id):
-    try:
-        # Get the comment by comment_id
-        comment_to_delete = Comment.query.get(comment_id)
-
-        # Check if the logged-in user is the owner of the post
-        logged_in_user_id = jwt_required()
-
-        if comment_to_delete.user_id == logged_in_user_id:
-            # Delete the post if the user is the owner
-            db.session.delete(comment_to_delete)
-            db.session.commit()
-
-            return jsonify({'message': 'Comment deleted successfully'}), 200
-        else:
-            # Return an error if the user is not the owner
-            return jsonify({'error': 'You are not authorized to delete this post'}), 403
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/comments', methods=['POST'])
-def get_comments_for_post():
-    data = request.json
-    post_id = data['post_id']
-
-    if post_id is None:
-        return jsonify({'error': 'Missing post_id parameter', 'code': 400})
-
-    post = Post.query.get(post_id)
-    if not post:
-        return jsonify({'error': 'Post not found', 'code': 404})
-    comments = Comment.query.filter_by(to_id=post_id).all()
-
-    comments_data = []
-    for comment in comments:
-        replies = SecondaryComment.query.filter_by(to_id=comment.comment_id).all()
-
-        replies_data = []
-        for reply in replies:
-            reply_data = {
-                'secondary_comment_id': reply.secondary_comment_id,
-                'content': reply.content,
-                'author_id': reply.user.user_id,
-                'author': reply.user.user_name,
-                'timestamp': reply.comment_time,
-                'avatar': 'http://i9.photobucket.com/albums/a88/creaticode/avatar_2_zps7de12f8b.jpg'
-            }
-            replies_data.append(reply_data)
-        comment_data = {
-            'comment_id': comment.comment_id,
-            'content': comment.content,
-            'author_id': comment.user.user_id,
-            'author': comment.user.user_name,
-            'timestamp': comment.comment_time,
-            'avatar': 'http://i9.photobucket.com/albums/a88/creaticode/avatar_1_zps8e1c80cd.jpg',
-            'replies': replies_data
-        }
-        comments_data.append(comment_data)
-
-    return jsonify({'comments': comments_data, 'code': 1000})
-
-
-@app.route('/get_replies', methods=['POST'])
-def get_replies():
-    data = request.get_json()
-
-    primary_comment_id = data['primary_comment_id']
-    if primary_comment_id is None:
-        return jsonify({'error': 'Missing primary_comment_id parameter', 'code': 400})
-
-    primary_comment = Comment.query.get(primary_comment_id)
-    if not primary_comment:
-        return jsonify({'error': 'Primary comment not found', 'code': 404})
-
-    # Fetch all secondary comments (replies) for the primary comment
-    replies = SecondaryComment.query.filter_by(to_id=primary_comment_id).all()
-
-    replies_data = []
-    for reply in replies:
-        reply_data = {
-            'secondary_comment_id': reply.secondary_comment_id,
-            'content': reply.content,
-            'author_id': reply.user.user_id,
-            'author': reply.user.username,
-            'timestamp': reply.comment_time
-        }
-        replies_data.append(reply_data)
-
-    return jsonify({'replies': replies_data, 'code': 1000})
+from comment import *
 
 
 @app.route('/vote', methods=['POST'])
@@ -207,6 +91,47 @@ def get_tags():
         tag_list.append(tag_info)
 
     return jsonify({'data': tag_list}), 200
+
+
+@app.route('/get_followed_users', methods=['GET'])
+@jwt_required()
+def get_followed_users():
+    user_id = get_jwt_identity()
+    followed_users = db.session.query(User).join(Friendship, User.user_id == Friendship.user2_id).filter(
+        Friendship.user1_id == user_id).all()
+    user_list = [{'user_id': user.user_id, 'username': user.user_name} for user in followed_users]
+    return jsonify({'followed_users': user_list, 'code': 1000})
+
+
+@app.route('/get_user_communities', methods=['GET'])
+@jwt_required()
+def get_user_communities():
+    user_id = get_jwt_identity()
+    user_communities = db.session.query(Community).join(CommunityUser,
+                                                        Community.community_id == CommunityUser.community_id).filter(
+        CommunityUser.user_id == user_id).all()
+    community_list = [
+        {'community_id': community.community_id, 'name': community.community_name, 'description': community.description}
+        for
+        community in
+        user_communities]
+    return jsonify({'my_communities': community_list}), 200
+
+
+@app.route('/top_tags/<int:n>', methods=['GET'])
+def top_tags(n):
+    try:
+        top_tags = db.session.query(Tag.tag_name, func.count(PostTag.post_id).label('post_count')) \
+            .join(PostTag, Tag.tag_id == PostTag.tag_id) \
+            .group_by(Tag.tag_name) \
+            .order_by(func.count(PostTag.post_id).desc()) \
+            .limit(n) \
+            .all()
+
+        result = [{'tag_name': tag.tag_name, 'post_count': tag.post_count} for tag in top_tags]
+        return jsonify({'top_tags': result, 'code': 1000})
+    except Exception as e:
+        return jsonify({'error': str(e), 'code': 500})
 
 
 if __name__ == '__main__':

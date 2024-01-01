@@ -78,19 +78,19 @@ def modify_password():
 
 
 # 注销用户
-@app.route('/logout/', methods=['POST'])
+@app.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
 
     if not user:
-        return jsonify({'message': 'User not found'}), 404
+        return jsonify({'message': 'User not found', 'code': 404})
 
     db.session.delete(user)
     db.session.commit()
 
-    return jsonify({'message': 'User logged out successfully!'}), 200
+    return jsonify({'message': 'User logged out successfully!', 'code': 1000})
 
 
 @app.route('/change_user', methods=['POST'])
