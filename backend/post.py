@@ -163,6 +163,7 @@ def get_post_of(post_id):
 
     tag_names = [tag.tag_name for tag in post_tags]
 
+
     # Create a dictionary with post information
     post_info = {
         'post_id': post.post_id,
@@ -173,7 +174,8 @@ def get_post_of(post_id):
         'post_time': post.post_time.isoformat(),
         'comment_count': post.comment_count(),
         'likes_count': post.likes_count(),
-        'tag_names': tag_names
+        'tag_names': tag_names,
+        'comments': []
     }
 
     # Return the post information as JSON

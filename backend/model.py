@@ -45,6 +45,15 @@ class Comment(db.Model):
     post = db.relationship('Post', backref=db.backref('comments', cascade='all, delete-orphan'))
     comment_time = db.Column(db.DateTime, nullable=True)
 
+class SecondaryComment(db.Model):
+    __tablename__ = 'secondary_comments'
+    secondary_comment_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    content = db.Column(db.String(1000), nullable=False)
+    from_id = db.Column(db.Integer, db.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
+    to_id = db.Column(db.Integer, db.ForeignKey('comments.comment_id', ondelete='CASCADE'), nullable=False)
+    user = db.relationship('User', backref=db.backref('secondary_comments', cascade='all, delete-orphan'))
+    comment_time = db.Column(db.DateTime, nullable=True)
+
 
 class Tag(db.Model):
     __tablename__ = 'tags'
